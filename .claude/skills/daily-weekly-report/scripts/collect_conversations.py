@@ -329,6 +329,8 @@ def main() -> int:
     parser.add_argument("--until", help="YYYY-MM-DD, inclusive")
     parser.add_argument("--projects-dir", default="~/.claude/projects")
     parser.add_argument("--project", help="substring filter on the project directory name")
+    parser.add_argument("--include-orphaned", action="store_true",
+                        help="also scan set-aside .orphaned- transcripts (duplicates prompts)")
     parser.add_argument("--format", choices=["json", "md"], default="json")
     parser.add_argument("--out", help="write here instead of stdout")
     args = parser.parse_args()
@@ -344,6 +346,12 @@ def main() -> int:
     sessions = []
     for path in sorted(root.glob("*/*.jsonl")):
         if args.project and args.project not in path.parent.name:
+            continue
+        # Claude Code sets aside earlier copies of a session as
+        # `<session>.orphaned-<ts>-<suffix>.jsonl` rather than deleting them.
+        # Those still end in .jsonl, so scanning them double-counts the same
+        # prompts. (`.jsonl.superseded-<ts>` doesn't match the glob at all.)
+        if ".orphaned-" in path.name and not args.include_orphaned:
             continue
         session = read_session(path, start, end, local_tz)
         if session:

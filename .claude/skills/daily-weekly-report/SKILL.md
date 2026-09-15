@@ -30,6 +30,40 @@ from memory. **Weekly is only accurate if daily has been running.** If the
 journal is empty for the week, say so and fall back to a wider transcript scan,
 warning the user that the older days will be thin.
 
+## What the transcript source actually guarantees
+
+Verified against the Claude Code docs, because the whole design rests on it.
+
+**What holds.** `~/.claude/projects/<project>/<session>.jsonl` is the "full
+conversation transcript: every message, tool call, and tool result", stored
+locally in plaintext. Nothing is truncated or summarized on the way to disk.
+
+**The four limits.** Each one is a reason the daily run matters:
+
+1. **30-day default retention.** Claude Code deletes transcripts older than
+   `cleanupPeriodDays` (default 30, minimum 1). Anything not mined within that
+   window is gone. Sessions last continued in Claude Desktop or Cowork are
+   exempt by default (`desktopSessionCleanupPeriodDays`).
+2. **Local CLI sessions only.** Claude Code on the web and other remote
+   sessions run in Anthropic-managed VMs; their transcripts live in an
+   ephemeral container, not on the user's machine, and vanish when it is
+   reclaimed. Work done in web sessions is invisible to this skill — if the
+   user's journal looks thin, check this before assuming a mining failure.
+3. **Set-aside copies double-count.** Earlier copies of a session are kept as
+   `<session>.orphaned-<ts>-<suffix>.jsonl`, which also ends in `.jsonl`. The
+   collector skips them; `--include-orphaned` overrides, and will duplicate
+   prompts.
+4. **Not encrypted, and it captures everything.** If a tool read a `.env` or a
+   command printed a credential, that value is in the transcript. It can
+   therefore reach a journal entry. Never copy a raw excerpt into `evidence`
+   without reading it — quote the user's reasoning, not whatever the
+   surrounding tool output happened to contain.
+
+`~/.claude/history.jsonl` holds every prompt typed, across all projects, with
+timestamps. It is a thinner fallback — prompts only, with no assistant turn to
+pair an endorsement against — and is swept on the same schedule. Worth checking
+only when a project's transcripts are missing.
+
 ---
 
 ## Daily workflow

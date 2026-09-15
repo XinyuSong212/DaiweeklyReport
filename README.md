@@ -80,8 +80,28 @@ your own exposition. Every entry carries `evidence` traceable to your own words,
 your own choices, or your own commits, so that any line survives a follow-up
 question from whoever reads it.
 
-## Privacy
+## What the transcript source guarantees, and its four limits
 
-`collect_conversations.py` reads your local Claude Code transcripts, which
-contain everything you typed — including anything pasted into a session. Review
-what lands in `journal/` and `reports/` before pushing to a shared remote.
+The design rests on transcripts being complete and local, so this is worth
+stating precisely (verified against the Claude Code docs):
+
+`~/.claude/projects/<project>/<session>.jsonl` is the **full conversation
+transcript — every message, tool call and tool result** — written locally in
+plaintext, untruncated.
+
+But:
+
+1. **30-day default retention.** Transcripts older than `cleanupPeriodDays`
+   (default 30, minimum 1) are deleted. This is the hard ceiling on how late
+   you can mine a day, and the reason the daily run is not optional. Sessions
+   last continued in Claude Desktop or Cowork are exempt by default.
+2. **Local CLI sessions only.** Claude Code on the web and other remote
+   sessions run in ephemeral Anthropic-managed VMs. Those transcripts never
+   reach your machine. Work done in web sessions cannot be mined.
+3. **Set-aside copies double-count.** Superseded session copies are kept as
+   `<session>.orphaned-<ts>-<suffix>.jsonl` — also a `.jsonl` file. The
+   collector skips them by default; `--include-orphaned` will duplicate prompts.
+4. **Not encrypted, and it captures everything.** If a tool read a `.env` or a
+   command printed a credential, that value is in the transcript in plaintext,
+   and could reach a journal entry. Review `journal/` and `reports/` before
+   pushing to a shared remote.
