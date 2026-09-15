@@ -47,7 +47,7 @@ ENDORSE_PATTERNS = [
     r"^(对|对的|没错|是的|嗯+|好|好的|行|可以|不错|赞|棒|漂亮|完美)\b",
     r"(同意|赞同|认可|有道理|说得对|就这样|就这么|就按|采纳|保留这个|这个思路好|正是)",
     # en
-    r"^(yes|yep|yeah|right|correct|exactly|agreed|agree|perfect|nice|great|ok|okay|lgtm|sgtm|sounds good)\b",
+    r"^(yes|yep|yeah|right|correct|exactly|agreed|agree|perfect|nice|great|ok|okay|lgtm|sgtm|sounds good)(?![a-z])",
     r"(good call|makes sense|that's right|let's do|go with|i like|love it|spot on)",
 ]
 
@@ -58,8 +58,14 @@ PUSHBACK_PATTERNS = [
     r"(换个|换成|改成|重来|重新|再想想|回退|撤销|其实|反而)",
     r"^(但是|不过|然而|可是)",
     # en
-    r"^(no|nope|not quite|wrong|actually|but|however)\b",
+    r"^(no|nope|not quite|wrong|actually|but|however)(?![a-z])",
     r"(doesn't work|does not work|won't work|will not work|bad idea|disagree|too slow|too complex|instead of|rather than|revert|roll back|scrap that)",
+    # Skepticism is pushback too: it disputes a claim the work rests on, and the
+    # answer usually changes something. Added after 2026-09-15, when
+    # "你确定所有的cli的聊天对话原文都记录在本地了是吧" read as an ordinary prompt --
+    # the challenge that exposed four limits in the source and a collector bug.
+    r"(你确定|确定吗|真的吗|是吧|是不是|对吗|有没有可能|会不会|难道|凭什么|依据|怎么证明|靠谱吗|可靠吗|验证过|为什么不|为啥不)",
+    r"(are you sure|you sure|really\?|how do you know|what if|is that right|says who|did you (check|verify|test)|why not)",
 ]
 
 # Turn-level noise that is not something a human typed as thinking.
@@ -110,6 +116,9 @@ def is_human_prompt(entry: dict) -> bool:
         return False
     if "toolUseResult" in entry:          # tool output wearing a user costume
         return False
+    if entry.get("isMeta"):               # harness injection, not typed by anyone
+        return False                      # skill bodies, image placeholders,
+                                          # "Continue from where you left off"
     origin = entry.get("origin")
     # Older transcripts omit `origin`; absence is not evidence of non-human.
     if isinstance(origin, dict) and origin.get("kind") not in (None, "human"):
