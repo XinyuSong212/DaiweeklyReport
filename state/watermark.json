@@ -1,13 +1,13 @@
 {
   "version": 1,
   "sources": {
-    "conversations": {
-      "mined_through": "2026-09-03T18:39:00+00:00",
-      "updated_at": "2026-09-15T01:43:04+00:00"
-    },
     "git": {
-      "mined_through": "2026-09-15T01:21:50+00:00",
-      "updated_at": "2026-09-15T01:43:12+00:00"
+      "mined_through": "2026-09-15T01:44:44+00:00",
+      "updated_at": "2026-09-15T01:44:44+00:00"
+    },
+    "conversations": {
+      "mined_through": "2026-09-15T01:40:30+00:00",
+      "updated_at": "2026-09-15T01:44:44+00:00"
     }
   }
 }
