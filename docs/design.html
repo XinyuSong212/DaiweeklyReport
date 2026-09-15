@@ -1,0 +1,661 @@
+<title>没做什么，为什么</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ground:#EFF1EF; --surface:#F9FAF8; --surface-2:#E5E9E6; --code-bg:#E7EBE8;
+    --ink:#151A19; --muted:#57635F;
+    --line:rgba(21,26,25,.14); --line-strong:rgba(21,26,25,.30);
+    --taken:#0F5F59; --taken-soft:rgba(15,95,89,.10);
+    --rejected:#96411F; --rejected-soft:rgba(150,65,31,.09);
+    --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+    --body:'Newsreader',Georgia,'Songti SC','Noto Serif CJK SC',serif;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0F1413; --surface:#161C1B; --surface-2:#1E2625; --code-bg:#101615;
+      --ink:#E4E9E7; --muted:#8D9C97;
+      --line:rgba(228,233,231,.16); --line-strong:rgba(228,233,231,.34);
+      --taken:#56BDB2; --taken-soft:rgba(86,189,178,.12);
+      --rejected:#E08256; --rejected-soft:rgba(224,130,86,.11);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0F1413; --surface:#161C1B; --surface-2:#1E2625; --code-bg:#101615;
+    --ink:#E4E9E7; --muted:#8D9C97;
+    --line:rgba(228,233,231,.16); --line-strong:rgba(228,233,231,.34);
+    --taken:#56BDB2; --taken-soft:rgba(86,189,178,.12);
+    --rejected:#E08256; --rejected-soft:rgba(224,130,86,.11);
+  }
+
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--body); font-size:1.0625rem; line-height:1.68;
+    padding-inline:clamp(16px,5vw,44px); padding-block:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .doc{max-width:1010px; margin-inline:auto; padding-block:clamp(40px,7vw,76px) 88px;
+       display:flex; flex-direction:column; gap:clamp(44px,6vw,68px);}
+  .prose{max-width:66ch;}
+  p{margin:0 0 .85em;}
+  p:last-child{margin-bottom:0;}
+  a{color:var(--taken);}
+
+  /* masthead */
+  .masthead{display:flex; flex-direction:column; gap:18px;
+            border-bottom:1px solid var(--line-strong); padding-bottom:30px;}
+  .eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.14em;
+           text-transform:uppercase; color:var(--muted);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.1rem,6vw,3.2rem);
+     line-height:1.04; letter-spacing:-.02em; margin:0; text-wrap:balance;}
+  .lede{max-width:60ch; font-size:1.18rem; line-height:1.6; color:var(--ink); margin:0;}
+  .lede em{font-style:normal; color:var(--taken); font-weight:500;}
+  .facts{display:flex; flex-wrap:wrap; gap:6px 22px; font-family:var(--mono);
+         font-size:.74rem; color:var(--muted); margin-top:4px;}
+
+  /* sections */
+  section{display:flex; flex-direction:column; gap:20px;}
+  h2{font-family:var(--display); font-weight:600; font-size:clamp(1.4rem,3.4vw,1.72rem);
+     line-height:1.2; letter-spacing:-.01em; margin:0; text-wrap:balance;
+     display:flex; align-items:baseline; gap:.6em;}
+  h2 .num{font-family:var(--mono); font-size:.66em; font-weight:400; color:var(--muted);
+          letter-spacing:0;}
+  h3{font-family:var(--display); font-weight:600; font-size:1.02rem; letter-spacing:.01em;
+     margin:0; text-wrap:balance;}
+
+  /* thesis contrast */
+  .thesis{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1px;
+          background:var(--line-strong); border:1px solid var(--line-strong);}
+  .thesis > div{background:var(--surface); padding:22px 24px; display:flex;
+                flex-direction:column; gap:9px;}
+  .thesis .k{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+             text-transform:uppercase;}
+  .thesis .has .k{color:var(--taken);} .thesis .lacks .k{color:var(--rejected);}
+  .thesis p{font-size:1rem; margin:0;}
+  .thesis code{font-size:.82em;}
+
+  /* tables */
+  .tw{overflow-x:auto; border:1px solid var(--line); background:var(--surface);}
+  table{border-collapse:collapse; width:100%; min-width:520px; font-size:.93rem;}
+  th,td{text-align:left; padding:11px 15px; border-bottom:1px solid var(--line);
+        vertical-align:top;}
+  thead th{font-family:var(--display); font-weight:600; font-size:.78rem;
+           letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+           background:var(--surface-2); border-bottom:1px solid var(--line-strong);}
+  tbody tr:last-child td{border-bottom:none;}
+  td.mono,th.mono{font-family:var(--mono); font-size:.82rem; white-space:nowrap;}
+  .tier{font-family:var(--mono); font-size:.7rem; letter-spacing:.08em; padding:2px 7px;
+        border:1px solid currentColor; white-space:nowrap;}
+  .t-a{color:var(--taken);} .t-d{color:var(--muted);}
+
+  /* code */
+  pre{margin:0; background:var(--code-bg); border:1px solid var(--line);
+      padding:16px 18px; overflow-x:auto; font-family:var(--mono); font-size:.8rem;
+      line-height:1.62; color:var(--ink); tab-size:2;}
+  code{font-family:var(--mono); font-size:.86em; background:var(--surface-2);
+       padding:.1em .34em; border-radius:2px;}
+  pre code{background:none; padding:0; font-size:1em;}
+  .cap{font-family:var(--mono); font-size:.72rem; color:var(--muted); letter-spacing:.02em;}
+
+  /* pipeline chain */
+  .chain{display:flex; flex-direction:column; gap:0;}
+  .stage{display:grid; grid-template-columns:auto 1fr; gap:0 20px;}
+  .stage .rail{display:flex; flex-direction:column; align-items:center; gap:8px;}
+  .stage .dot{width:26px; height:26px; flex:none; border:1px solid var(--line-strong);
+              background:var(--surface); color:var(--muted); font-family:var(--mono);
+              font-size:.72rem; display:grid; place-items:center;}
+  .stage .thread{flex:1; width:1px; background:var(--line-strong); min-height:14px;}
+  .stage:last-child .thread{background:none;}
+  .stage .body{display:flex; flex-direction:column; gap:10px; padding-bottom:26px;
+               min-width:0;}
+  .stage .hd{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px;}
+  .stage .src{font-family:var(--mono); font-size:.73rem; color:var(--muted);}
+
+  /* figures */
+  figure{margin:0; display:flex; flex-direction:column; gap:12px;}
+  .figbox{border:1px solid var(--line); background:var(--surface);
+          padding:18px clamp(10px,2.5vw,20px); overflow-x:auto;}
+  figure svg{display:block; width:100%; min-width:640px; max-width:920px; height:auto;
+             margin-inline:auto; font-family:var(--mono);}
+  figcaption{font-family:var(--mono); font-size:.74rem; color:var(--muted); line-height:1.55;
+             max-width:72ch;}
+  .bx{fill:var(--surface-2); stroke:var(--line-strong); stroke-width:1;}
+  .bx-em{fill:var(--taken-soft); stroke:var(--taken); stroke-width:1.75;}
+  .bx-no{fill:var(--rejected-soft); stroke:var(--rejected); stroke-width:1;
+         stroke-dasharray:5 4;}
+  .lbl{fill:var(--ink); font-size:12px; font-weight:500;}
+  .sub{fill:var(--muted); font-size:10.5px;}
+  .tag{fill:var(--muted); font-size:10px;}
+  .band{fill:var(--muted); font-size:11px; letter-spacing:.12em;}
+  .band-no{fill:var(--rejected); font-size:11px; letter-spacing:.12em;}
+  .band-ok{fill:var(--taken); font-size:11px; letter-spacing:.12em;}
+  .arw{stroke:var(--muted); stroke-width:1.4; fill:none;}
+  .arw-no{stroke:var(--rejected); stroke-width:1.4; fill:none; stroke-dasharray:5 4;}
+  .arw-ok{stroke:var(--taken); stroke-width:1.6; fill:none;}
+  .rule{stroke:var(--line-strong); stroke-width:1; stroke-dasharray:2 4;}
+  .mk{fill:var(--muted);} .mk-no{fill:var(--rejected);} .mk-ok{fill:var(--taken);}
+
+  /* callout */
+  .note{border-left:3px solid var(--taken); background:var(--taken-soft);
+        padding:16px 20px; display:flex; flex-direction:column; gap:8px;}
+  .note.warn{border-left-color:var(--rejected); background:var(--rejected-soft);}
+  .note .k{font-family:var(--display); font-weight:600; font-size:.88rem;}
+  .note p{font-size:.98rem; margin:0;}
+
+  /* limits list */
+  .limits{display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:14px;}
+  .limits > div{border:1px solid var(--line); background:var(--surface); padding:16px 18px;
+                display:flex; flex-direction:column; gap:7px;}
+  .limits .n{font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+             color:var(--rejected);}
+  .limits h3{font-size:.96rem;}
+  .limits p{font-size:.92rem; line-height:1.55; color:var(--muted); margin:0;}
+
+  ul{margin:0; padding-left:1.15em; display:flex; flex-direction:column; gap:7px;}
+  li{padding-left:.15em;}
+  hr{border:none; border-top:1px solid var(--line-strong); margin:0;}
+
+  :focus-visible{outline:2px solid var(--taken); outline-offset:2px;}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
+</style>
+
+<article class="doc">
+
+  <header class="masthead">
+    <div class="eyebrow">DaiweeklyReport · 设计文档</div>
+    <h1>没做什么，为什么</h1>
+    <p class="lede">一个写日报周报的工具，但它真正在做的事是<em>抢救决策</em>：从 Claude Code 的对话记录里，把你否掉的方案、被约束逼出的取舍、还没想清的问题捞出来，在它们消失之前存成结构化日志。</p>
+    <div class="facts">
+      <span>XinyuSong212/DaiweeklyReport</span>
+      <span>claude/daily-weekly-report-skill-1xke65</span>
+      <span>2026-09-15</span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span>问题不在素材，在推理</h2>
+    <div class="prose">
+      <p>写日报周报的常见诊断是"记不住"——周五想不起周一干了什么。按这个诊断做出来的工具就是素材聚合器：拉 git、拉日历、拉 issue，拼成一份流水账。</p>
+      <p>但流水账正是绝大多数日报周报失败的样子。读者（你的 leader）从"重构了支付重试逻辑"里读不出任何东西：他不知道你考虑过什么、为什么否掉、卡在哪。<strong>缺的不是素材，是推理。</strong></p>
+      <p>而推理有个要命的性质——它几乎不落盘。</p>
+    </div>
+    <div class="thesis">
+      <div class="has">
+        <div class="k">git 记录着</div>
+        <p>你<strong>做了什么</strong>。commit 是决策的<em>结果</em>：最终选中的那条路，以及它改了哪些文件。</p>
+      </div>
+      <div class="lacks">
+        <div class="k">git 不记录</div>
+        <p>你<strong>没做什么</strong>。被否掉的方案、否掉的理由、逼你这么选的约束——决策的<em>过程</em>，一行都没有。</p>
+      </div>
+      <div class="has">
+        <div class="k">对话记录着</div>
+        <p>两者都有。你说"不行，加全局锁会把结账串行化"的那一刻，理由和被否的方案同时在场。</p>
+      </div>
+    </div>
+    <div class="prose">
+      <p>所以这个工具的数据源选择不是为了方便，是因为<strong>对话记录是决策过程唯一的留存地</strong>。而它默认 30 天后就被清理掉了。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>让报告读起来像思考的五个要素</h2>
+    <div class="prose">
+      <p>对比同一件事的两种写法，长度几乎一样：</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th style="width:38%">流水账</th><th>可被追问的写法</th></tr></thead>
+        <tbody><tr>
+          <td>Refactored the payment retry logic (#123)</td>
+          <td>Traced the 4% checkout failure rate to non-idempotent retries, not the gateway timeouts we had assumed. Considered a global checkout lock and rejected it: serializing every checkout would have cost ~3x p99 latency to buy a property we could get locally. Shipped per-request idempotency keys instead (#123); failure rate is 0.6% after two days.</td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p>差别可以拆成五个要素。关键在于：<strong>五个里有四个只存在于对话里</strong>，git 只能供给最后一个。</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th class="mono" style="width:44px">#</th><th style="width:30%">要素</th><th>来源</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">1</td><td>最初的判断，以及什么纠正了它</td><td>你早期提问的措辞</td></tr>
+          <tr><td class="mono">2</td><td><strong>否掉的方案 + 否掉的理由</strong></td><td>你表达否定的消息；AskUserQuestion 里没被选的选项</td></tr>
+          <tr><td class="mono">3</td><td>真正驱动决策的约束</td><td>你补充上下文的消息</td></tr>
+          <tr><td class="mono">4</td><td>尚未想清的问题</td><td>你没被回答的提问</td></tr>
+          <tr><td class="mono">5</td><td>结果，可量化</td><td>git / PR / 指标</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <div class="k">第 2 项承载最大权重，而它在普通日报里几乎从不出现</div>
+      <p>这正是流水账读起来像流水账的原因：它描述了一条路径，却没有显示这条路径是被<em>选中</em>的。一份报告能不能被追问，取决于它有没有第 2 项。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>架构：日报是摄取，周报是消费</h2>
+    <div class="prose">
+      <p>数据源的性质倒过来定义了日报和周报的分工。先看日报这条链路——它是全部工作发生的地方：</p>
+    </div>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 920 296" role="img" aria-label="日报流程图：三个来源（transcript、git、notes）经两个采集脚本进入模型挖掘，模型把决策追加到 journal，同时渲染出当天的日报。">
+          <defs>
+            <marker id="f1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon class="mk" points="0,1 10,5 0,9"></polygon>
+            </marker>
+          </defs>
+
+          <text class="band" x="86" y="18" text-anchor="middle">来源</text>
+          <text class="band" x="320" y="18" text-anchor="middle">采集 · 确定性</text>
+          <text class="band" x="570" y="18" text-anchor="middle">挖掘 · 模型</text>
+          <text class="band" x="816" y="18" text-anchor="middle">产出</text>
+
+          <rect class="bx" x="16" y="38" width="140" height="58"></rect>
+          <text class="lbl" x="28" y="60">transcript</text>
+          <text class="sub" x="28" y="76">~/.claude/projects</text>
+          <text class="sub" x="28" y="89">**/*.jsonl</text>
+
+          <rect class="bx" x="16" y="114" width="140" height="58"></rect>
+          <text class="lbl" x="28" y="136">git</text>
+          <text class="sub" x="28" y="152">commits · PR</text>
+          <text class="sub" x="28" y="165">numstat</text>
+
+          <rect class="bx" x="16" y="190" width="140" height="58"></rect>
+          <text class="lbl" x="28" y="212">notes.md</text>
+          <text class="sub" x="28" y="228">会议 · 口头决定</text>
+          <text class="sub" x="28" y="241">无痕迹的工作</text>
+
+          <rect class="bx" x="232" y="38" width="176" height="58"></rect>
+          <text class="lbl" x="244" y="60">collect_</text>
+          <text class="lbl" x="244" y="76">conversations.py</text>
+          <text class="sub" x="244" y="90">高召回，不求精确</text>
+
+          <rect class="bx" x="232" y="114" width="176" height="58"></rect>
+          <text class="lbl" x="244" y="136">collect_git.py</text>
+          <text class="sub" x="244" y="152">显式时间边界</text>
+          <text class="sub" x="244" y="165">前置记录分隔符</text>
+
+          <rect class="bx" x="484" y="38" width="172" height="210"></rect>
+          <text class="lbl" x="496" y="60">决策挖掘</text>
+          <text class="sub" x="496" y="82">按信号强度排序：</text>
+          <text class="sub" x="496" y="102">① choices</text>
+          <text class="sub" x="496" y="120">② pushbacks</text>
+          <text class="sub" x="496" y="138">③ endorsements</text>
+          <text class="sub" x="496" y="156">④ prompts</text>
+          <text class="sub" x="496" y="182">丢弃误报</text>
+          <text class="sub" x="496" y="200">不补造理由</text>
+          <text class="sub" x="496" y="218">证据不足则留 null</text>
+
+          <rect class="bx-em" x="728" y="52" width="176" height="70"></rect>
+          <text class="lbl" x="740" y="74">journal/</text>
+          <text class="lbl" x="740" y="90">YYYY-MM.jsonl</text>
+          <text class="sub" x="740" y="108">追加写 · 长期资产</text>
+
+          <rect class="bx" x="728" y="166" width="176" height="58"></rect>
+          <text class="lbl" x="740" y="188">reports/daily/</text>
+          <text class="lbl" x="740" y="204">YYYY-MM-DD.md</text>
+          <text class="sub" x="740" y="218">副产物</text>
+
+          <line class="arw" x1="156" y1="67" x2="226" y2="67" marker-end="url(#f1a)"></line>
+          <text class="tag" x="191" y="60" text-anchor="middle">读取</text>
+          <line class="arw" x1="156" y1="143" x2="226" y2="143" marker-end="url(#f1a)"></line>
+          <text class="tag" x="191" y="136" text-anchor="middle">读取</text>
+          <line class="arw" x1="156" y1="219" x2="478" y2="219" marker-end="url(#f1a)"></line>
+          <text class="tag" x="317" y="212" text-anchor="middle">原文直入</text>
+
+          <line class="arw" x1="408" y1="67" x2="478" y2="80" marker-end="url(#f1a)"></line>
+          <text class="tag" x="443" y="62" text-anchor="middle">信号</text>
+          <line class="arw" x1="408" y1="143" x2="478" y2="143" marker-end="url(#f1a)"></line>
+          <text class="tag" x="443" y="136" text-anchor="middle">结果</text>
+
+          <line class="arw" x1="656" y1="118" x2="722" y2="94" marker-end="url(#f1a)"></line>
+          <text class="tag" x="689" y="100" text-anchor="middle">追加</text>
+          <line class="arw" x1="656" y1="170" x2="722" y2="192" marker-end="url(#f1a)"></line>
+          <text class="tag" x="689" y="186" text-anchor="middle">渲染</text>
+        </svg>
+      </div>
+      <figcaption>日报链路。<code>notes.md</code> 不经采集脚本，原文直接进挖掘环节，它是非工程工作的兜底。挖掘的产物有两个，但只有 journal 是长期资产——日报本身是这次写入的副产物。</figcaption>
+    </figure>
+
+    <div class="prose">
+      <p>周报则完全不碰原始 transcript。这是整个设计里最关键的一次取舍，值得把被否掉的两个方案画出来：</p>
+    </div>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 920 344" role="img" aria-label="周报方案对比图。被否掉的两种做法：拼接七份日报，或在周末重新解析一周的原始 transcript。采用的做法：读 journal 的本周窗口、整周 git 结果、上周报告的 Next 段落，三者汇入周报。">
+          <defs>
+            <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon class="mk-no" points="0,1 10,5 0,9"></polygon>
+            </marker>
+            <marker id="f2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon class="mk-ok" points="0,1 10,5 0,9"></polygon>
+            </marker>
+          </defs>
+
+          <text class="band-no" x="16" y="20">被否掉的方案</text>
+
+          <rect class="bx-no" x="16" y="34" width="38" height="32"></rect>
+          <rect class="bx-no" x="62" y="34" width="38" height="32"></rect>
+          <rect class="bx-no" x="108" y="34" width="38" height="32"></rect>
+          <rect class="bx-no" x="154" y="34" width="38" height="32"></rect>
+          <rect class="bx-no" x="200" y="34" width="38" height="32"></rect>
+          <rect class="bx-no" x="246" y="34" width="38" height="32"></rect>
+          <rect class="bx-no" x="292" y="34" width="38" height="32"></rect>
+          <text class="sub" x="16" y="82">7 份日报</text>
+
+          <rect class="bx-no" x="16" y="98" width="314" height="34"></rect>
+          <text class="lbl" x="28" y="119">7 天原始 transcript</text>
+
+          <rect class="bx-no" x="400" y="46" width="140" height="70"></rect>
+          <text class="lbl" x="412" y="76">weekly.md</text>
+          <text class="sub" x="412" y="94">得不到结果粒度</text>
+
+          <line class="arw-no" x1="330" y1="50" x2="394" y2="70" marker-end="url(#f2a)"></line>
+          <text class="tag" x="360" y="44" text-anchor="middle">拼接</text>
+          <line class="arw-no" x1="330" y1="115" x2="394" y2="98" marker-end="url(#f2a)"></line>
+          <text class="tag" x="360" y="128" text-anchor="middle">重新解析</text>
+
+          <text class="sub" x="560" y="56">日报是事件粒度。到周五，</text>
+          <text class="sub" x="560" y="72">「否掉了什么」已经不在里面。</text>
+          <text class="sub" x="560" y="110">原始 transcript 装不进上下文，</text>
+          <text class="sub" x="560" y="126">且 30 天后被清理。</text>
+
+          <line class="rule" x1="16" y1="162" x2="904" y2="162"></line>
+          <text class="band-ok" x="16" y="190">采用的方案</text>
+
+          <rect class="bx-em" x="16" y="204" width="200" height="36"></rect>
+          <text class="lbl" x="28" y="227">journal · 本周窗口</text>
+
+          <rect class="bx" x="16" y="252" width="200" height="36"></rect>
+          <text class="lbl" x="28" y="275">git · 整周</text>
+
+          <rect class="bx" x="16" y="300" width="200" height="36"></rect>
+          <text class="lbl" x="28" y="323">上周报告的 Next 段</text>
+
+          <rect class="bx-em" x="400" y="226" width="140" height="88"></rect>
+          <text class="lbl" x="412" y="254">weekly.md</text>
+          <text class="sub" x="412" y="274">按项目聚类</text>
+          <text class="sub" x="412" y="292">非按天罗列</text>
+
+          <line class="arw-ok" x1="216" y1="222" x2="394" y2="250" marker-end="url(#f2b)"></line>
+          <text class="tag" x="300" y="228" text-anchor="middle">聚类</text>
+          <line class="arw-ok" x1="216" y1="270" x2="394" y2="270" marker-end="url(#f2b)"></line>
+          <text class="tag" x="300" y="263" text-anchor="middle">补结果</text>
+          <line class="arw-ok" x1="216" y1="318" x2="394" y2="292" marker-end="url(#f2b)"></line>
+          <text class="tag" x="300" y="324" text-anchor="middle">逐条对账</text>
+
+          <text class="sub" x="560" y="240">journal 已是结构化决策，</text>
+          <text class="sub" x="560" y="256">不需要再做一次理解。</text>
+          <text class="sub" x="560" y="284">上周承诺逐条交代：</text>
+          <text class="sub" x="560" y="300">做完 / 推迟 / 放弃 / 被取代。</text>
+        </svg>
+      </div>
+      <figcaption>周报方案对比。两条被否的路径都指向同一个问题——决策细节在事后不可重建。对账那条边容易被忽略，但它是有经验的读者第一个去看的地方：上周说要做的事，这周一字不提，是周报最快失去信任的方式。</figcaption>
+    </figure>
+
+    <div class="note warn">
+      <div class="k">这个拆法带来一个硬依赖：周报的准确性取决于日报是否真的每天跑过</div>
+      <p>transcript 默认 30 天后被删，且任何一天的细节最好当天就挖。所以"日报应该每天跑"不是建议，是<strong>前提</strong>。目前没有任何机制强制它——这是已知的最大缺口。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>实现：怎么从 JSONL 里分出"你说的话"</h2>
+    <div class="prose">
+      <p>transcript 每行一个事件，但 <code>type: "user"</code> 同时覆盖三种完全不同的东西：你真正敲的话、喂回模型的工具返回、以及子 agent 的 prompt。只有第一种是思考。</p>
+    </div>
+    <pre><code>def is_human_prompt(entry):
+    if entry.get("type") != "user":        return False
+    if entry.get("isSidechain"):           return False   # 子 agent，由 agent 撰写
+    if "toolUseResult" in entry:           return False   # 披着 user 外衣的工具输出
+    origin = entry.get("origin")
+    # 老版本 transcript 没有 origin 字段；缺失不等于非人类
+    if isinstance(origin, dict) and origin.get("kind") not in (None, "human"):
+        return False
+    return True</code></pre>
+    <div class="prose">
+      <p>分出来之后，按可靠度分四档提取信号。排序不是随意的——它决定了模型该按什么顺序读：</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th class="mono" style="width:58px">档</th><th style="width:22%">信号</th><th>是什么，为什么可靠</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="tier t-a">①</span></td>
+            <td class="mono">choices</td>
+            <td><strong>最硬。</strong><code>AskUserQuestion</code> 的 <code>toolUseResult</code> 里同时存着你选的答案和<em>没被选的选项及其描述</em>——一次带着未选路径的、被记录下来的取舍。几乎必然构成一条 journal 条目。</td>
+          </tr>
+          <tr>
+            <td><span class="tier t-a">②</span></td>
+            <td class="mono">pushbacks</td>
+            <td><strong>价值最高、最易腐。</strong>你否定或改向的消息，配上被否的那段提议（<code>responding_to</code>，取 assistant 那一轮末尾 900 字符，因为收尾的结论才是你在回应的东西）。</td>
+          </tr>
+          <tr>
+            <td><span class="tier t-d">③</span></td>
+            <td class="mono">endorsements</td>
+            <td>你认可的消息。单独一般不成条目，它补完由 ① 或 ② 起头的那条——告诉你最终走了哪条路。</td>
+          </tr>
+          <tr>
+            <td><span class="tier t-d">④</span></td>
+            <td class="mono">prompts</td>
+            <td>其余全部。每个 session 的第一条 prompt 常常比后面任何一句都更准确地陈述了问题。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <div class="k">刻意的不对称：脚本求召回，模型求精确</div>
+      <p>正则分不出"好，继续"和"好，这个设计对"——只有带上下文的读者能分。而漏掉一条 pushback 在 transcript 过期后<strong>不可恢复</strong>，多一条误报只花模型一行阅读。所以分类器故意过度触发，脚本 docstring 和 SKILL.md 都写明了<em>禁止</em>为降噪而收紧它。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>一条真实决策的完整链路</h2>
+    <div class="prose">
+      <p>下面四段是同一个决策在四个阶段的真实内容，取自这个仓库自己的运行结果，不是示意数据。</p>
+    </div>
+
+    <div class="chain">
+      <div class="stage">
+        <div class="rail"><div class="dot">1</div><div class="thread"></div></div>
+        <div class="body">
+          <div class="hd"><h3>原始输入 · transcript 里的一行</h3>
+            <span class="src">~/.claude/projects/-home-user-DaiweeklyReport/&lt;session&gt;.jsonl</span></div>
+          <pre><code>{"type":"user","isSidechain":false,"timestamp":"2026-09-03T18:43:32.371Z",
+ "toolUseResult":{
+   "questions":[{"question":"素材主要从哪里来？（可多选）","options":[
+      {"label":"Git / PR / issue","description":"从本地 git log、GitHub PR/issue 自动抓取…"},
+      {"label":"手工随手记","description":"你平时在一个 notes 文件里随手记…"},
+      {"label":"日历 / 会议","description":"从日历抓会议记录。需要 connector，本环境不一定可用。"},
+      {"label":"聊天记录（飞书/Slack）","description":"从聊天里捞进展。集成成本最高…"}]}],
+   "answers":{"素材主要从哪里来？（可多选）":
+      "Git / PR / issue, 手工随手记, 我和claude对话。主要是我发出的消息。…"}}}</code></pre>
+          <div class="cap">关键：<code>options</code> 和 <code>answers</code> 同时在场，所以"没选哪些"是可读的。</div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="dot">2</div><div class="thread"></div></div>
+        <div class="body">
+          <div class="hd"><h3>采集输出 · collect_conversations.py --format md</h3>
+            <span class="src">脚本到此为止，不做判断</span></div>
+          <pre><code>### Explicit tradeoffs
+- **Q:** 素材主要从哪里来？（可多选）
+  **Chose:** Git / PR / issue, 手工随手记, 我和claude对话…
+  **Passed over:** 日历 / 会议 — 从日历抓会议记录。需要 connector，本环境不一定可用。
+  **Passed over:** 聊天记录（飞书/Slack） — 从聊天里捞进展。集成成本最高…</code></pre>
+          <div class="cap">"Passed over" 就是第 2 项要素的原料。</div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="dot">3</div><div class="thread"></div></div>
+        <div class="body">
+          <div class="hd"><h3>journal 条目 · 模型写入，长期资产</h3>
+            <span class="src">journal/2026-09.jsonl</span></div>
+          <pre><code>{"id":"2026-09-15-conversations-as-primary-source",
+ "date":"2026-09-15","project":"DaiweeklyReport","status":"shipped",
+ "title":"Conversation transcripts as a first-class source, calendar and chat dropped",
+ "framing":"Assumed git plus an optional calendar connector would cover the material.",
+ "alternatives":[
+   {"option":"Calendar / meeting integration",
+    "rejected_because":"needs a connector that isn't reliably available"},
+   {"option":"Feishu / Slack history",
+    "rejected_because":"highest integration cost of the four; likely degenerates
+                        into manual paste"}],
+ "constraint":"Only sources readable without external credentials were viable.",
+ "decision":"Git/PR + manual notes + Claude Code transcripts, with the user's own
+             messages and their endorsements as the thinking signal.",
+ "outcome":"Verified transcripts are parseable: human turns isolated by
+            origin.kind == 'human' and absence of toolUseResult…",
+ "open_question":"Whether claude.ai (non-CLI) conversations can be reached at all.",
+ "evidence":[{"kind":"choice","ts":"2026-09-03T18:43:32+00:00",
+              "quote":"Git / PR / issue, 手工随手记, 我和claude对话…"}],
+ "supersedes":null}</code></pre>
+          <div class="cap">证据引文<strong>保持原文原语言</strong>——它是记录，不是译文。周报是英文的，但这一字段不翻译。</div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="rail"><div class="dot">4</div></div>
+        <div class="body">
+          <div class="hd"><h3>最终产出 · 英文报告条目</h3>
+            <span class="src">reports/daily/2026-09-15.md</span></div>
+          <pre><code>- **Conversation transcripts are a first-class source; calendar and chat are
+  out.** Both need credentials or degenerate into manual paste. Confirmed
+  transcripts are cleanly parseable — human turns isolate on
+  `origin.kind == "human"` with no `toolUseResult`, and `AskUserQuestion`
+  stores the chosen answer *and* the options passed over, which is a recorded
+  tradeoff with the roads-not-taken still attached.</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>脚本接口</h2>
+    <div class="prose">
+      <p>两个脚本都能脱离模型独立运行，输出 JSON 或可读的 Markdown 摘要。</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th style="width:30%">collect_conversations.py</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">--days N</td><td>以今天结尾的窗口，默认 1。日界按<strong>本地时区</strong>切，transcript 存的是 UTC。</td></tr>
+          <tr><td class="mono">--since / --until</td><td><code>YYYY-MM-DD</code>，两端含。</td></tr>
+          <tr><td class="mono">--project SUB</td><td>对 project 目录名做子串过滤。</td></tr>
+          <tr><td class="mono">--include-orphaned</td><td>把被搁置的 <code>.orphaned-</code> 副本也扫进来。<strong>会导致 prompt 重复</strong>，默认关。</td></tr>
+          <tr><td class="mono">--format json｜md</td><td><code>md</code> 给人读，<code>json</code> 给程序。</td></tr>
+          <tr><td class="mono">输出</td><td><code>{window, totals, sessions[]}</code>；每个 session 含 <code>prompts / pushbacks / endorsements / choices</code>。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th style="width:30%">collect_git.py</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">--repo PATH</td><td>可重复；缺省读 <code>config.json</code> 的 <code>repos</code>。</td></tr>
+          <tr><td class="mono">--author EMAIL</td><td>可重复；缺省读 <code>config.json</code> 的 <code>author_emails</code>，再退到 <code>git config user.email</code>。</td></tr>
+          <tr><td class="mono">--all-authors</td><td>不按作者过滤。</td></tr>
+          <tr><td class="mono">--include-merges</td><td>默认排除 merge commit。</td></tr>
+          <tr><td class="mono">输出</td><td><code>{window, repos[]}</code>；每个 commit 含 <code>sha / ts / subject / body / pr / files / insertions / deletions</code>。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warn">
+      <div class="k">这个脚本本来被当成简单的那一半，结果藏了两个静默丢数据的 bug</div>
+      <p><strong>一、日期窗口。</strong><code>git log --since=2026-09-15</code> 不等于当天 00:00:00——git 的 approxidate 会把缺失的时分秒补成<em>当前时刻</em>。实测：时钟 00:24:48 时，一个 00:24:32 的 commit 被滤掉了。早上跑日报会悄悄丢掉当天凌晨的全部提交。修法是始终传显式的 <code>T00:00:00</code>。</p>
+      <p><strong>二、numstat 错位。</strong><code>--numstat</code> 的统计块打印在格式化头部<em>之后</em>，所以记录分隔符放在格式串末尾时，每条 commit 的文件统计被切到了下一条记录的开头，全部 commit 都报 <code>+0/-0, 0 files</code>。修法是把分隔符<em>前置</em>。</p>
+      <p>两个都不抛异常、返回干净的空值。同一个窗口修完从 0 commits 变成 1 commit / 11 files / +1132。"跑起来没报错"恰恰是这两个缺陷的外观。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span>署名诚实：这是设计约束，不是免责声明</h2>
+    <div class="prose">
+      <p>素材来自和 AI 的对话，所以有个绕不开的问题：把对话里的内容写进交给 leader 的周报，边界在哪？</p>
+      <p>划法是：记录<strong>决定了什么、为什么</strong>——"chose per-request keys over a global lock, since the lock would have serialized checkouts"。这个判断确实是你做的，不管选项是谁措辞的。但<strong>不</strong>把模型的分析原样搬进报告当成你自己的论述。两条可执行的推论：</p>
+      <ul>
+        <li>每条 journal 条目必须有 <code>evidence</code>。只靠你从未回应过的 assistant 文本支撑的条目，不算决策，直接丢弃。</li>
+        <li>你的措辞和模型的措辞不一致时，<strong>以你的为准</strong>。</li>
+      </ul>
+      <p>判据很直接：你 leader 对报告里任意一行追问一句，你都得答得上来——因为那确实是你定的。</p>
+      <p>这套约束在本仓库自己的 journal 里已经生效过一次。「日报摄取 / 周报消费」那条决策是模型提出、用户未明确表态只是继续推进的，条目里如实写了：</p>
+      <pre><code>"evidence":[
+  {"kind":"your_words","ts":"2026-09-15T00:18:10+00:00","quote":"你开发的咋样了？"},
+  {"kind":"note","quote":"Proposed in-session; user proceeded without objection
+                          rather than endorsing explicitly. Weak signal —
+                          recorded as such."}]</code></pre>
+      <p>日报末尾也标了当天各条目的证据强度。写成强证据会好看一点，但一问就穿帮。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">08</span>数据源的四条边界</h2>
+    <div class="prose">
+      <p>整个设计压在 transcript 上，所以这些边界经查证后写进了 SKILL.md 和 README。先说成立的部分：<code>~/.claude/projects/&lt;project&gt;/&lt;session&gt;.jsonl</code> 是"full conversation transcript: every message, tool call, and tool result"，本地明文，不截断、不摘要。</p>
+    </div>
+    <div class="limits">
+      <div>
+        <div class="n">边界 01</div>
+        <h3>默认保留 30 天</h3>
+        <p>超过 <code>cleanupPeriodDays</code>（默认 30，最小 1）即被删除。这是能回溯的硬上限，也是日报必须每天跑的原因。在 Claude Desktop / Cowork 里最后续过的 session 默认豁免。</p>
+      </div>
+      <div>
+        <div class="n">边界 02</div>
+        <h3>只覆盖本地 CLI session</h3>
+        <p>网页版和其他远程 session 跑在临时 VM 里，transcript 不落到你机器上。这类工作对本工具完全不可见——journal 显得单薄时，先查这一条，再怀疑挖掘失效。</p>
+      </div>
+      <div>
+        <div class="n">边界 03</div>
+        <h3>搁置副本会重复计数</h3>
+        <p>session 的旧副本存为 <code>&lt;session&gt;.orphaned-&lt;ts&gt;-&lt;suffix&gt;.jsonl</code>，后缀<em>也是</em> <code>.jsonl</code>，会被 glob 扫中。实测会让素材整体翻倍，现已默认跳过。</p>
+      </div>
+      <div>
+        <div class="n">边界 04</div>
+        <h3>不加密，而且什么都录</h3>
+        <p>某个工具读了 <code>.env</code>、某条命令打印了凭据，那个值就明文在 transcript 里，也就可能流进 journal。所以 <code>evidence</code> 绝不能粘未读过的原始片段。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">09</span>仓库结构与用法</h2>
+    <pre><code>.claude/skills/daily-weekly-report/
+  SKILL.md                     两套流程、写作规则、署名规则、数据源边界
+  references/
+    journal-schema.md           条目 schema + 挖掘规则 + 什么不算决策
+    report-anatomy.md           五要素、对比样例、日报周报模板
+  scripts/
+    collect_conversations.py    transcript → prompts/pushbacks/endorsements/choices
+    collect_git.py              git → commits/PR/量级
+config.json                    要扫的仓库和作者邮箱
+notes.md                       无痕迹工作的兜底记录
+journal/YYYY-MM.jsonl          决策日志 · 真正的资产
+reports/daily/YYYY-MM-DD.md
+reports/weekly/YYYY-Www.md</code></pre>
+    <div class="prose">
+      <p>在仓库里对 Claude Code 说「写今天的日报」或「写本周周报」，skill 自行触发。脚本也可单独跑：</p>
+    </div>
+    <pre><code>python3 .claude/skills/daily-weekly-report/scripts/collect_conversations.py --days 1 --format md
+python3 .claude/skills/daily-weekly-report/scripts/collect_git.py --days 7 --format md --repo .</code></pre>
+    <div class="prose">
+      <p>报告用英文写，对话可以是任何语言；证据引文保持原语言。</p>
+    </div>
+    <hr>
+    <div class="prose">
+      <h3>已知缺口</h3>
+      <ul>
+        <li>没有任何机制保证日报每天跑，而周报依赖它。cron 或 <code>SessionStart</code> hook 是明显的下一步，尚未实现。</li>
+        <li>认可 / 否定的模式是手写的，只覆盖中英文。</li>
+        <li>网页版 Claude Code 的对话无法挖掘。若大部分工作在那边发生，实际覆盖率比看起来更差。</li>
+        <li>分类器的松紧只能拿真实使用数据校准。在校准之前就自动化，等于把未验证的判断固化下来。</li>
+      </ul>
+    </div>
+  </section>
+
+</article>
