@@ -23,7 +23,22 @@ from pathlib import Path
 
 RECORD_SEP = "\x1e"
 FIELD_SEP = "\x1f"
-PRETTY = FIELD_SEP.join(["%H", "%aI", "%an", "%ae", "%s", "%b"]) + RECORD_SEP
+# The separator LEADS the format. With --numstat, git prints the formatted
+# header first and the stat block after it, so a trailing separator would slice
+# each commit's numstat onto the front of the next record.
+PRETTY = RECORD_SEP + FIELD_SEP.join(["%H", "%aI", "%an", "%ae", "%s", "%b"])
+
+
+def load_config(start: Path) -> dict:
+    """Find config.json in cwd or any ancestor up to the repo root."""
+    for directory in [start, *start.parents][:6]:
+        candidate = directory / "config.json"
+        if candidate.is_file():
+            try:
+                return json.loads(candidate.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                return {}
+    return {}
 
 
 def git(repo: Path, *args: str) -> str:
@@ -73,16 +88,17 @@ def collect_repo(repo: Path, since: str, until: str, emails: list[str], include_
         record = record.strip("\n")
         if not record.strip():
             continue
-        head, _, numstat = record.partition("\n")
+        head, _, rest = record.partition("\n")
         fields = head.split(FIELD_SEP)
         if len(fields) < 6:
             continue
         sha, authored, name, email, subject, body_head = fields[:6]
-        # %b can itself contain newlines; git put the rest before the numstat.
+        # %b spans newlines, so the tail holds the rest of the body followed by
+        # the numstat block. A numstat line is exactly three tab-separated
+        # fields; everything before the first of those is still body.
         body_lines, stat_lines = [body_head], []
-        for line in numstat.splitlines():
-            parts = line.split("\t")
-            if len(parts) == 3:
+        for line in rest.splitlines():
+            if len(line.split("\t")) == 3:
                 stat_lines.append(line)
             elif not stat_lines:
                 body_lines.append(line)
@@ -162,16 +178,26 @@ def main() -> int:
     parser.add_argument("--out")
     args = parser.parse_args()
 
-    today = datetime.now().date()
-    since = args.since or (today - timedelta(days=args.days - 1)).isoformat()
-    # git --until is exclusive of later times on that date, so push to next day.
-    until = (datetime.fromisoformat(args.until).date() + timedelta(days=1)).isoformat() if args.until \
-        else (today + timedelta(days=1)).isoformat()
+    config = load_config(Path.cwd())
 
-    repos = [Path(os.path.expanduser(r)) for r in (args.repo or ["."])]
-    payload = {"window": {"since": since, "until": args.until or today.isoformat()}, "repos": []}
+    today = datetime.now().date()
+    since_date = datetime.fromisoformat(args.since).date() if args.since \
+        else today - timedelta(days=args.days - 1)
+    until_date = datetime.fromisoformat(args.until).date() if args.until else today
+
+    # Always pass an explicit time. `git log --since=2026-09-15` does NOT mean
+    # midnight: git's approxidate fills a missing time-of-day with the CURRENT
+    # time, so a bare date silently drops everything committed earlier today.
+    since = f"{since_date.isoformat()}T00:00:00"
+    until = f"{(until_date + timedelta(days=1)).isoformat()}T00:00:00"
+
+    repo_args = args.repo or config.get("repos") or ["."]
+    repos = [Path(os.path.expanduser(r)) for r in repo_args]
+    payload = {"window": {"since": since_date.isoformat(), "until": until_date.isoformat()}, "repos": []}
     for repo in repos:
-        emails = [] if args.all_authors else (args.author or default_emails(repo))
+        emails = [] if args.all_authors else (
+            args.author or config.get("author_emails") or default_emails(repo)
+        )
         collected = collect_repo(repo, since, until, emails, args.include_merges)
         if collected:
             payload["repos"].append(collected)
