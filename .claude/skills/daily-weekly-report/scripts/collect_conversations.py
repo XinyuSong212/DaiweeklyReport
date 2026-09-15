@@ -35,6 +35,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import watermark  # sibling module; python puts the script's dir on sys.path
+
 # Excerpt of the assistant turn kept alongside an endorsement/pushback.
 # Taken from the END of the turn -- the closing prose is what you reacted to.
 EXCERPT_CHARS = 900
@@ -200,11 +202,19 @@ def read_session(path: Path, start, end, local_tz) -> dict | None:
                                 for o in (question.get("options") or [])
                                 if isinstance(o, dict)
                             ]
+                    stamp = iso(ts, local_tz)
+                    # Choices bound the session's span too. Without this a
+                    # choices-only session leaves last_ts unset and the
+                    # watermark cannot advance past it.
+                    if meta["first_ts"] is None or stamp < meta["first_ts"]:
+                        meta["first_ts"] = stamp
+                    if meta["last_ts"] is None or stamp > meta["last_ts"]:
+                        meta["last_ts"] = stamp
                     for question, answer in answers.items():
                         options = options_by_q.get(question, [])
                         chosen = {a.strip() for a in str(answer).split(",")}
                         choices.append({
-                            "ts": iso(ts, local_tz),
+                            "ts": stamp,
                             "question": question,
                             "answer": answer,
                             "passed_over": [
@@ -228,9 +238,12 @@ def read_session(path: Path, start, end, local_tz) -> dict | None:
                 continue
 
             stamp = iso(ts, local_tz)
-            if meta["first_ts"] is None:
+            # min/max rather than first/last seen: a choice may already have
+            # bounded the span, and file order is not strictly chronological.
+            if meta["first_ts"] is None or stamp < meta["first_ts"]:
                 meta["first_ts"] = stamp
-            meta["last_ts"] = stamp
+            if meta["last_ts"] is None or stamp > meta["last_ts"]:
+                meta["last_ts"] = stamp
 
             labels, confidence = classify(text)
             prompts.append({"ts": stamp, "text": text, "labels": labels})
@@ -271,29 +284,70 @@ def iso(ts, local_tz) -> str | None:
     return ts.astimezone(local_tz).isoformat(timespec="seconds")
 
 
-def resolve_window(args, local_tz) -> tuple[datetime, datetime]:
-    """Day boundaries follow LOCAL time; transcripts store UTC."""
+def resolve_window(args, local_tz) -> tuple[datetime, datetime, dict]:
+    """Day boundaries follow LOCAL time; transcripts store UTC.
+
+    In watermark mode the window is (last mined, now] rather than a calendar
+    day, which is what lets a missed day and a multi-day session both get
+    picked up instead of falling between two "today" windows.
+    """
+    now = datetime.now(local_tz)
+    end = datetime.fromisoformat(args.until).replace(tzinfo=local_tz) + timedelta(days=1) \
+        if args.until else now + timedelta(seconds=1)
+
+    if args.since_watermark and not args.since:
+        path = watermark.find_path(args.watermark)
+        through = watermark.mined_through(path, "conversations")
+        if through is not None:
+            # Strictly after the last mined event, so it isn't mined twice.
+            return through + timedelta(seconds=1), end, {
+                "mode": "watermark",
+                "mined_through": through.isoformat(timespec="seconds"),
+                "gap_days": watermark.gap_days(through, now),
+                "watermark_path": str(path),
+            }
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0) \
+            - timedelta(days=args.bootstrap_days - 1)
+        return start, end, {
+            "mode": "bootstrap",
+            "mined_through": None,
+            "gap_days": None,
+            "watermark_path": str(path),
+            "note": f"no watermark yet; backfilling {args.bootstrap_days} days",
+        }
+
     if args.since:
         start = datetime.fromisoformat(args.since).replace(tzinfo=local_tz)
     else:
-        today = datetime.now(local_tz).replace(hour=0, minute=0, second=0, microsecond=0)
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
         start = today - timedelta(days=args.days - 1)
-    if args.until:
-        end = datetime.fromisoformat(args.until).replace(tzinfo=local_tz) + timedelta(days=1)
-    else:
-        end = datetime.now(local_tz) + timedelta(seconds=1)
-    return start, end
+    return start, end, {"mode": "calendar", "mined_through": None, "gap_days": None}
 
 
 def render_markdown(payload: dict) -> str:
+    window = payload["window"]
     out = [
-        f"# Conversation signals — {payload['window']['since']} to {payload['window']['until']}",
+        f"# Conversation signals — {window['since']} to {window['until']}",
         "",
         f"{payload['totals']['sessions']} sessions · {payload['totals']['prompts']} prompts · "
         f"{payload['totals']['pushbacks']} pushbacks · {payload['totals']['endorsements']} endorsements · "
         f"{payload['totals']['choices']} explicit choices",
         "",
     ]
+    if window.get("mode") == "watermark":
+        gap = window.get("gap_days")
+        out.append(f"mode: watermark — everything since {window['mined_through']}")
+        if gap is not None and gap > watermark.GAP_ALERT_DAYS:
+            out.append(f"**GAP: {gap} days since the last mined event.** Days were "
+                       f"missed; this window is a catch-up, not one day.")
+        out.append("")
+    elif window.get("mode") == "bootstrap":
+        out.append(f"mode: bootstrap — {window.get('note','')}. Expect volume; this is a backfill.")
+        out.append("")
+    if window.get("watermark_candidate"):
+        out.append(f"After the journal is written, advance with:")
+        out.append(f"`watermark.py set --source conversations --through {window['watermark_candidate']}`")
+        out.append("")
     for session in payload["sessions"]:
         out.append(f"## {session['project']}  ({session['session_id'][:8]})")
         if session.get("git_branch"):
@@ -340,12 +394,19 @@ def main() -> int:
     parser.add_argument("--project", help="substring filter on the project directory name")
     parser.add_argument("--include-orphaned", action="store_true",
                         help="also scan set-aside .orphaned- transcripts (duplicates prompts)")
+    parser.add_argument("--since-watermark", action="store_true",
+                        help="mine everything since the last successful run instead of a "
+                             "calendar window; picks up missed days and multi-day sessions")
+    parser.add_argument("--watermark", help="path to watermark.json")
+    parser.add_argument("--bootstrap-days", type=int, default=30,
+                        help="first-run backfill when no watermark exists (default: 30, "
+                             "the transcript retention ceiling)")
     parser.add_argument("--format", choices=["json", "md"], default="json")
     parser.add_argument("--out", help="write here instead of stdout")
     args = parser.parse_args()
 
     local_tz = datetime.now().astimezone().tzinfo
-    start, end = resolve_window(args, local_tz)
+    start, end, window_meta = resolve_window(args, local_tz)
 
     root = Path(os.path.expanduser(args.projects_dir))
     if not root.is_dir():
@@ -367,8 +428,21 @@ def main() -> int:
             sessions.append(session)
 
     sessions.sort(key=lambda s: s["first_ts"] or "")
+
+    # The candidate is the latest event actually included. Advancing to "now"
+    # instead would skip anything written between the scan and the journal
+    # append. An empty window advances to the window end, so a quiet day does
+    # not get rescanned forever.
+    latest = max((s["last_ts"] for s in sessions if s["last_ts"]), default=None)
+    window = {
+        "since": start.date().isoformat(),
+        "until": (end - timedelta(seconds=1)).date().isoformat(),
+        "since_ts": start.isoformat(timespec="seconds"),
+        "watermark_candidate": latest or (end - timedelta(seconds=1)).isoformat(timespec="seconds"),
+        **window_meta,
+    }
     payload = {
-        "window": {"since": start.date().isoformat(), "until": (end - timedelta(seconds=1)).date().isoformat()},
+        "window": window,
         "totals": {
             "sessions": len(sessions),
             "prompts": sum(len(s["prompts"]) for s in sessions),

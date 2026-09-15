@@ -650,7 +650,7 @@ python3 .claude/skills/daily-weekly-report/scripts/collect_git.py --days 7 --for
     <div class="prose">
       <h3>已知缺口</h3>
       <ul>
-        <li>没有任何机制保证日报每天跑，而周报依赖它。cron 或 <code>SessionStart</code> hook 是明显的下一步，尚未实现。</li>
+        <li>漏跑一天不再永久丢失 —— 采集窗口改成了「上次成功挖到哪」的水位线（<code>state/watermark.json</code>），漏跑的天数会在下次自动补上，并在报告里标出跨度。但<strong>仍然没有机制提醒你去跑</strong>，而水位线的补救上限就是 transcript 的 30 天保留期。cron 或 <code>SessionStart</code> hook 依然是下一步。</li>
         <li>认可 / 否定的模式是手写的，只覆盖中英文。</li>
         <li>网页版 Claude Code 的对话无法挖掘。若大部分工作在那边发生，实际覆盖率比看起来更差。</li>
         <li>分类器的松紧只能拿真实使用数据校准。在校准之前就自动化，等于把未验证的判断固化下来。</li>

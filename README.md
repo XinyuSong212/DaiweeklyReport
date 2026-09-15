@@ -16,9 +16,16 @@ notes.md ──────────────────────┘  
                                  reports/daily/                      reconciled against last week's plan
 ```
 
-The **daily** run is an ingest: it mines that day's conversations for decisions
-— rejected alternatives, forced constraints, open questions — and appends them
-to a durable journal. The daily report is a byproduct.
+The **daily** run is an ingest: it mines conversations for decisions — rejected
+alternatives, forced constraints, open questions — and appends them to a durable
+journal. The daily report is a byproduct.
+
+It windows on a **watermark**, not on "today": everything since the last
+successful run. A calendar window loses a day nobody ran the skill, and loses
+the earlier turns of a session spanning several days. The watermark makes a
+missed day recoverable instead of silently gone — bounded by the ~30-day
+transcript retention. It advances only after the journal is written, so a failed
+run leaves its material queued rather than marking it mined.
 
 The **weekly** run consumes the journal, clusters by project, joins outcomes
 from git, and reconciles against what last week promised. It never re-reads raw
@@ -46,7 +53,9 @@ The `daily-weekly-report` skill triggers on those.
   scripts/
     collect_conversations.py    transcripts -> prompts, pushbacks, endorsements, choices
     collect_git.py              git history -> commits, PRs, magnitude
+    watermark.py                how far each source has been mined
 config.json                     repos and author emails to scan
+state/watermark.json            mining watermark (advanced only after a journal write)
 notes.md                        free-form capture for work that leaves no trace
 journal/YYYY-MM.jsonl           the decision journal (the actual asset)
 reports/daily/YYYY-MM-DD.md

@@ -21,6 +21,8 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import watermark  # sibling module; python puts the script's dir on sys.path
+
 RECORD_SEP = "\x1e"
 FIELD_SEP = "\x1f"
 # The separator LEADS the format. With --numstat, git prints the formatted
@@ -141,10 +143,24 @@ def extract_pr(subject: str, body: str) -> str | None:
 
 
 def render_markdown(payload: dict) -> str:
+    window = payload["window"]
     out = [
-        f"# Git activity — {payload['window']['since']} to {payload['window']['until']}",
+        f"# Git activity — {window['since']} to {window['until']}",
         "",
     ]
+    if window.get("mode") == "watermark":
+        gap = window.get("gap_days")
+        out.append(f"mode: watermark — everything since {window['mined_through']}")
+        if gap is not None and gap > watermark.GAP_ALERT_DAYS:
+            out.append(f"**GAP: {gap} days since the last mined commit.** This window is a catch-up.")
+        out.append("")
+    elif window.get("mode") == "bootstrap":
+        out.append(f"mode: bootstrap — {window.get('note','')}")
+        out.append("")
+    if window.get("watermark_candidate"):
+        out.append("After the journal is written, advance with:")
+        out.append(f"`watermark.py set --source git --through {window['watermark_candidate']}`")
+        out.append("")
     if not payload["repos"]:
         out.append("_No commits in window._")
         return "\n".join(out)
@@ -174,26 +190,52 @@ def main() -> int:
     parser.add_argument("--author", action="append", default=[], help="repeatable email filter; defaults to git config user.email")
     parser.add_argument("--all-authors", action="store_true")
     parser.add_argument("--include-merges", action="store_true")
+    parser.add_argument("--since-watermark", action="store_true",
+                        help="collect everything since the last successful run instead of a "
+                             "calendar window; picks up missed days")
+    parser.add_argument("--watermark", help="path to watermark.json")
+    parser.add_argument("--bootstrap-days", type=int, default=30,
+                        help="first-run backfill when no watermark exists (default: 30)")
     parser.add_argument("--format", choices=["json", "md"], default="json")
     parser.add_argument("--out")
     args = parser.parse_args()
 
     config = load_config(Path.cwd())
 
-    today = datetime.now().date()
-    since_date = datetime.fromisoformat(args.since).date() if args.since \
-        else today - timedelta(days=args.days - 1)
+    now = datetime.now().astimezone()
+    today = now.date()
     until_date = datetime.fromisoformat(args.until).date() if args.until else today
-
-    # Always pass an explicit time. `git log --since=2026-09-15` does NOT mean
-    # midnight: git's approxidate fills a missing time-of-day with the CURRENT
-    # time, so a bare date silently drops everything committed earlier today.
-    since = f"{since_date.isoformat()}T00:00:00"
     until = f"{(until_date + timedelta(days=1)).isoformat()}T00:00:00"
+
+    window_meta = {"mode": "calendar"}
+    if args.since_watermark and not args.since:
+        path = watermark.find_path(args.watermark)
+        through = watermark.mined_through(path, "git")
+        if through is not None:
+            # Second-granularity, strictly after the last mined commit.
+            since = (through + timedelta(seconds=1)).isoformat(timespec="seconds")
+            since_date = through.date()
+            window_meta = {"mode": "watermark", "mined_through": through.isoformat(timespec="seconds"),
+                           "gap_days": watermark.gap_days(through, now),
+                           "watermark_path": str(path)}
+        else:
+            since_date = today - timedelta(days=args.bootstrap_days - 1)
+            since = f"{since_date.isoformat()}T00:00:00"
+            window_meta = {"mode": "bootstrap", "gap_days": None, "watermark_path": str(path),
+                           "note": f"no watermark yet; backfilling {args.bootstrap_days} days"}
+    else:
+        since_date = datetime.fromisoformat(args.since).date() if args.since \
+            else today - timedelta(days=args.days - 1)
+        # Always pass an explicit time. `git log --since=2026-09-15` does NOT
+        # mean midnight: git's approxidate fills a missing time-of-day with the
+        # CURRENT time, so a bare date silently drops everything committed
+        # earlier today.
+        since = f"{since_date.isoformat()}T00:00:00"
 
     repo_args = args.repo or config.get("repos") or ["."]
     repos = [Path(os.path.expanduser(r)) for r in repo_args]
-    payload = {"window": {"since": since_date.isoformat(), "until": until_date.isoformat()}, "repos": []}
+    payload = {"window": {"since": since_date.isoformat(), "until": until_date.isoformat(),
+                          "since_ts": since, **window_meta}, "repos": []}
     for repo in repos:
         emails = [] if args.all_authors else (
             args.author or config.get("author_emails") or default_emails(repo)
@@ -201,6 +243,12 @@ def main() -> int:
         collected = collect_repo(repo, since, until, emails, args.include_merges)
         if collected:
             payload["repos"].append(collected)
+
+    # Latest commit actually included; an empty window advances to the window
+    # end so a quiet day is not rescanned forever.
+    stamps = [c["ts"] for r in payload["repos"] for c in r["commits"]]
+    payload["window"]["watermark_candidate"] = max(stamps) if stamps else \
+        f"{until_date.isoformat()}T23:59:59{now.strftime('%z')[:3]}:{now.strftime('%z')[3:]}"
 
     text = render_markdown(payload) if args.format == "md" else json.dumps(payload, ensure_ascii=False, indent=2)
     if args.out:

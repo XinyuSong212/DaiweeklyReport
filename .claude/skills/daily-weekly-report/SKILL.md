@@ -68,14 +68,30 @@ only when a project's transcripts are missing.
 
 ## Daily workflow
 
-**1. Set the window.** Default: today. `--since/--until` if the user names days.
-
-**2. Collect.** From the repo root:
+**1. Collect since the watermark**, not since midnight. From the repo root:
 
 ```bash
-python3 .claude/skills/daily-weekly-report/scripts/collect_conversations.py --days 1 --format md
-python3 .claude/skills/daily-weekly-report/scripts/collect_git.py --days 1 --format md --repo . [--repo OTHER]
+python3 .claude/skills/daily-weekly-report/scripts/collect_conversations.py --since-watermark --format md
+python3 .claude/skills/daily-weekly-report/scripts/collect_git.py --since-watermark --format md
 ```
+
+`state/watermark.json` records how far each source was last *successfully*
+mined, and the window is everything after it. A calendar window silently loses
+two things: a day nobody ran the skill, and the earlier turns of a session
+spanning several days — a session opened on the 3rd and continued on the 15th
+has its opening turns, and any `AskUserQuestion` tradeoffs recorded there,
+outside every "today" window from the 4th on. The watermark covers both.
+
+Use `--days N` or `--since/--until` only when the user asks for a specific
+window; those bypass the watermark and must not be followed by a watermark
+advance.
+
+**Read the header before the body.** It reports the mode and, when more than
+~1.5 days have passed, a **GAP** line. On a gap, say so in the report: this
+window is a catch-up covering several days, not one day, and the daily report
+should name the range it actually covers. On `mode: bootstrap` (no watermark
+yet) expect a 30-day backfill — that is the transcript retention ceiling, so it
+is the one chance to capture anything older.
 
 Read `config.json` for the repo list and author emails if it exists. Also read
 `notes.md` — it is the fallback for work that leaves no trace in git or chat
@@ -108,9 +124,29 @@ rather than writing a near-duplicate. A reversal is valuable — it shows learni
 
 **5. Render** `reports/daily/YYYY-MM-DD.md` from `references/report-anatomy.md`.
 
-**6. Report back** what was captured and, briefly, what looked thin. If a day
+**6. Advance the watermark — last, and only now.** Each collector prints the
+exact command in its header; run both with the `watermark_candidate` values
+from *this* run:
+
+```bash
+python3 .claude/skills/daily-weekly-report/scripts/watermark.py set --source conversations --through <ts>
+python3 .claude/skills/daily-weekly-report/scripts/watermark.py set --source git --through <ts>
+```
+
+The collectors deliberately do not do this themselves. Mining is only
+successful once the journal is written, and only you know whether it was. **If
+the run failed, was abandoned, or you were not confident enough to write
+entries, leave the watermark alone** — the material stays queued for the next
+run. Advancing it early marks unmined material as mined, and transcripts do not
+come back.
+
+Never advance it for a window the user asked for explicitly (`--days 7`, a past
+date range): that window has no relationship to what has been mined.
+
+**7. Report back** what was captured and, briefly, what looked thin. If a day
 produced commits but no discernible reasoning, say so — that is a real signal
-about the day, not a failure of the tool.
+about the day, not a failure of the tool. If the window was a catch-up, say how
+many days it spanned.
 
 ---
 
