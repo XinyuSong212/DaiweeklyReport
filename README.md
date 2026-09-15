@@ -54,6 +54,7 @@ The `daily-weekly-report` skill triggers on those.
     collect_conversations.py    transcripts -> prompts, pushbacks, endorsements, choices
     collect_git.py              git history -> commits, PRs, magnitude
     watermark.py                how far each source has been mined
+    validate_journal.py         checks journal evidence against the transcripts
 config.json                     repos and author emails to scan
 state/watermark.json            mining watermark (advanced only after a journal write)
 notes.md                        free-form capture for work that leaves no trace

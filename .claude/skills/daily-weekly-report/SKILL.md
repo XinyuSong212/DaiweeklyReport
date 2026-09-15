@@ -100,7 +100,7 @@ Read `config.json` for the repo list and author emails if it exists. Also read
 Use `--format md` for reading. Use `--format json --out <scratchpad>` only when
 the window is large enough that the digest is unwieldy.
 
-**3. Mine decisions.** This is the actual work — see
+**2. Mine decisions.** This is the actual work — see
 `references/journal-schema.md` for the schema and the mining rules. Attack the
 collector output in this order, because that is the order of signal quality:
 
@@ -116,13 +116,32 @@ collector output in this order, because that is the order of signal quality:
 The classifiers over-trigger on purpose. Discard the false positives yourself —
 a "ok" that just means "continue" is not an endorsement of anything.
 
-**4. Append to the journal.** `journal/YYYY-MM.jsonl`, one JSON object per line.
+**3. Append to the journal.** `journal/YYYY-MM.jsonl`, one JSON object per line.
 Before appending, read the existing entries for that month: if a decision
 continues or reverses an earlier one, set `supersedes` to the earlier `id`
 rather than writing a near-duplicate. A reversal is valuable — it shows learning
 — so record it, do not quietly overwrite.
 
-**5. Render** `reports/daily/YYYY-MM-DD.md` from `references/report-anatomy.md`.
+**4. Render** `reports/daily/YYYY-MM-DD.md` from `references/report-anatomy.md`.
+
+**5. Validate before you trust it.**
+
+```bash
+python3 .claude/skills/daily-weekly-report/scripts/validate_journal.py
+```
+
+It re-reads the transcripts and checks every `your_words` and `choice` quote
+against the event it cites. A timestamp filled in from memory, or a quote that
+drifted, fails as **FABRICATED** — this is not hypothetical: two of the first
+nine entries written here carried invented timestamps, one off by eleven
+minutes, and the prose around them was correct, so nothing else would have
+caught it. **A non-zero exit means fix the entries, not the checker, and do not
+advance the watermark.**
+
+**UNSOURCED** means an entry claims `attribution: "author"` while citing no
+words or choice of theirs. Either find the real evidence, or set
+`attribution: "assistant"` — and then it belongs in the report's activity
+section, never written up as the author's own reasoning.
 
 **6. Advance the watermark — last, and only now.** Each collector prints the
 exact command in its header; run both with the `watermark_candidate` values

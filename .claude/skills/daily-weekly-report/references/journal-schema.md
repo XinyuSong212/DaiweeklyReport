@@ -48,7 +48,15 @@ append-only.
 | `outcome` | no | measured result. `null` until measured — not a prediction |
 | `open_question` | no | what is still unresolved |
 | `evidence` | yes | ≥ 1 item |
+| `attribution` | no | `author` (default) · `assistant` · `shared` — who made the call |
 | `supersedes` | no | `id` of an entry this continues or reverses |
+
+`attribution` exists because not every decision in a session is the author's.
+An implementation call made on their behalf is still worth journalling, but
+writing it up as their reasoning is the exact failure the attribution rule
+exists to prevent. Declare it instead: `assistant` entries are reported as
+activity, never in a Decided section. An entry left at the `author` default
+with no `your_words` or `choice` evidence fails validation.
 
 `evidence.kind` is one of `your_words`, `choice`, `commit`, `note`, `pr`.
 Quotes are **verbatim, in the original language**. Never paraphrase into
